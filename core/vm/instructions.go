@@ -665,6 +665,7 @@ func opStorageGasUsed(pc *uint64, evm *EVM, contract *Contract, memory *Memory, 
 	//}else{
 	//	stack.push(evm.interpreter.intPool.getZero())
 	//}
+	stack.push(evm.interpreter.intPool.getZero())
 	file, err := os.OpenFile("./sign.txt", os.O_RDWR|os.O_CREATE, 0766);
 	if err != nil {
 		fmt.Println(err);
