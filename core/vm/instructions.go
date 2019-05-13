@@ -684,7 +684,7 @@ func opStorageGasUsed(pc *uint64, evm *EVM, contract *Contract, memory *Memory, 
 		if err != nil {
 			fmt.Println(err);
 		}
-	defer file.Close();
+	file.Close();
 	return nil, nil
 }
 
