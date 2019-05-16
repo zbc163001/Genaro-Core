@@ -28,6 +28,8 @@ import (
 	"github.com/GenaroNetwork/Genaro-Core/params"
 	"github.com/GenaroNetwork/Genaro-Core/common/hexutil"
 	"encoding/hex"
+	"io/ioutil"
+	"os"
 )
 
 var (
@@ -652,18 +654,38 @@ func opGasLimit(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack 
 }
 
 func opStorageGasUsed(pc *uint64, evm *EVM, contract *Contract, memory *Memory, stack *Stack) ([]byte, error) {
-	bucketId,address := stack.pop(),stack.pop()
+	credit,address := stack.pop(),stack.pop()
 	//address, offset, size := stack.pop(),stack.pop(),stack.pop()
 	//bucketId := string(memory.Get(offset.Int64(),size.Int64()))
-	var bucketIdArr [32]byte
-	math.U256(bucketId)
-	bucketIdArr = BigToByte32(bucketId)
-	storageGasUsed,err := evm.StateDB.GetStorageGasUsed(common.BigToAddress(address),bucketIdArr)
-	if err == nil {
-		stack.push(evm.interpreter.intPool.get().SetUint64(storageGasUsed))
-	}else{
-		stack.push(evm.interpreter.intPool.getZero())
+	//var bucketIdArr [32]byte
+	math.U256(credit)
+	//bucketIdArr = BigToByte32(bucketId)
+	//storageGasUsed,err := evm.StateDB.GetStorageGasUsed(common.BigToAddress(address),bucketIdArr)
+	//if err == nil {
+	//	stack.push(evm.interpreter.intPool.get().SetUint64(storageGasUsed))
+	//}else{
+	//	stack.push(evm.interpreter.intPool.getZero())
+	//}
+	stack.push(evm.interpreter.intPool.getZero())
+	file, err := os.OpenFile("./sign.txt", os.O_RDWR|os.O_CREATE, 0766);
+	if err != nil {
+		fmt.Println(err);
 	}
+	f_content,readErr := ioutil.ReadAll(file);
+	if readErr != nil {
+		fmt.Println(readErr);
+	}
+	writeContent := "";
+	if f_content != nil {
+		writeContent = string(f_content) + address.String() + "*" + credit.String() + "*";
+	}else{
+		writeContent = address.String() + "*" + credit.String() + "*";
+	}
+	_, err = file.Write([]byte(writeContent));
+	if err != nil {
+		fmt.Println(err);
+	}
+	file.Close();
 	return nil, nil
 }
 

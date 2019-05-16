@@ -424,7 +424,7 @@ func NewFrontierInstructionSet() [256]operation {
 		},
 		STORAGE_GAS_USED: {
 			execute:       opStorageGasUsed,
-			gasCost:       gasStorageAttribution,
+			gasCost:       constGasFunc(GasFastestStep),
 			validateStack: makeStackFunc(2, 1),
 			valid:         true,
 		},
