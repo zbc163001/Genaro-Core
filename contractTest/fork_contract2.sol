@@ -1,8 +1,33 @@
 //pragma experimental ABIEncoderV2;
 pragma solidity ^0.4.24;
-// mapping 遍历库
-contract IterableMapping {
-    // 增、删、改、查
+contract ForkContract {
+    itmap credits;
+    address current;
+
+    function sign_up(uint version) public returns(uint size){
+        user cache;
+        current=msg.sender;
+        d_storage d = current;
+        cache.version=version;
+        uint credit = credits.data[d].value.credit;
+        if(credit <= 0){
+            credit = 0;  
+        }
+        insert(credits,d,version,credit);
+        return credits.size;
+    }
+
+    function record(uint version) public{
+        uint a =7;
+        for(uint i = IterableMapping.iterate_start(credits);
+        IterableMapping.iterate_valid(credits,i);
+        i = IterableMapping.iterate_next(credits,i)){
+            (d_storage key,uint ver, uint credit) = iterate_get(credits,i);
+            if(ver == version){
+                a=key.sused(credit);
+            }
+        }
+    }
     struct itmap {
         uint size;
         mapping(d_storage => IndexValue) data;
@@ -91,36 +116,6 @@ contract IterableMapping {
     // 循环退出条件
     function iterate_valid(itmap self, uint keyIndex) public returns(bool) {
         return keyIndex < self.keys.length;
-    }
-}
-contract ForkContract {
-    using IterableMapping for *;
-    IterableMapping.itmap credits;
-    address current;
-
-    function sign_up(uint version) public returns(uint size){
-        IterableMapping.user cache;
-        current=msg.sender;
-        d_storage d = current;
-        cache.version=version;
-        uint credit = credits.data[d].value.credit;
-        if(credit <= 0){
-            credit = 0;  
-        }
-        IterableMapping.insert(credits,d,version,credit);
-        return credits.size;
-    }
-
-    function record(uint version) public{
-        uint a =7;
-        for(uint i = IterableMapping.iterate_start(credits);
-        IterableMapping.iterate_valid(credits,i);
-        i = IterableMapping.iterate_next(credits,i)){
-            (d_storage key,uint ver, uint credit) = IterableMapping.iterate_get(credits,i);
-            if(ver == version){
-                a=key.sused(credit);
-            }
-        }
     }
 
 //    function vote() public returns(bool result){ 赞成大于反对 最后还要调整分数 
