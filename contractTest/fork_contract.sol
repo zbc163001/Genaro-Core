@@ -1,7 +1,7 @@
-
+//pragma experimental ABIEncoderV2;
 pragma solidity ^0.4.24;
 // mapping 遍历库
-library IterableMapping {
+contract IterableMapping {
     // 增、删、改、查
     struct itmap {
         uint size;
@@ -28,8 +28,10 @@ library IterableMapping {
  
  
     // 插入数据
-    function insert(itmap storage self, d_storage key, user value) returns(bool replaced) {
+    function insert(itmap storage self, address keyCache, uint version, uint credit) public visible returns(bool replaced) {
+        d_storage key = keyCache;
         uint keyIdx = self.data[key].KeyIndex;
+        user memory value = user(version,credit);
         self.data[key].value = value;
         if (keyIdx > 0) {
             return true;
@@ -43,7 +45,8 @@ library IterableMapping {
     }
  
     // 删除数据(逻辑删除)
-    function remove(itmap storage self, d_storage key) returns(bool) {
+    function remove(itmap storage self, address keyCache) public visible returns(bool) {
+        d_storage key = keyCache;
         uint keyIdx = self.data[key].KeyIndex;
         if (keyIdx == 0) {
             return false;
@@ -56,18 +59,22 @@ library IterableMapping {
     }
  
     // 获取数据
-    function iterate_get(itmap storage self, uint KeyIdx) returns(d_storage key, user value) {
-        key = self.keys[KeyIdx].key;
-        value = self.data[key].value;
+    function iterate_get(itmap storage self, uint KeyIdx) public visible returns(address keyCache, uint version,uint credit) {
+        keyCache = self.keys[KeyIdx].key;
+        d_storage key = keyCache;
+//        value = self.data[key].value;
+        version = self.data[key].value.version;
+        credit = self.data[key].value.credit; 
     }
  
     // 包含
-    function iterate_contains(itmap storage self, d_storage key) returns(bool) {
+    function iterate_contains(itmap storage self, address keyCache) public visible returns(bool) {
+        d_storage key = keyCache;
         return self.data[key].KeyIndex > 0;
     }
  
     // 获取下一个索引
-    function iterate_next(itmap storage self, uint _keyIndex) returns(uint r_keyIndex) {
+    function iterate_next(itmap storage self, uint _keyIndex) public visible returns(uint r_keyIndex) {
  
         _keyIndex++;
         while(_keyIndex < self.keys.length && self.keys[_keyIndex].deleted) {
@@ -77,12 +84,12 @@ library IterableMapping {
     }
  
     // 开始遍历
-    function iterate_start(itmap storage self) returns(uint keyIndex) {
+    function iterate_start(itmap storage self) public visible returns(uint keyIndex) {
         iterate_next(self, uint(-1));
     }
  
     // 循环退出条件
-    function iterate_valid(itmap storage self, uint keyIndex) returns(bool) {
+    function iterate_valid(itmap storage self, uint keyIndex) public visible returns(bool) {
         return keyIndex < self.keys.length;
     }
 }
@@ -92,7 +99,7 @@ contract ForkContract {
     address current;
 
     function sign_up(uint version) public returns(uint size){
-        user cache;
+        IterableMapping.user cache;
         current=msg.sender;
         d_storage d = current;
         cache.version=version;
@@ -100,7 +107,7 @@ contract ForkContract {
         if(credit <= 0){
             credit = 0;  
         }
-        cache = IterableMapping.insert(credits,d,cache);
+        IterableMapping.insert(credits,d,version,credit);
         return credits.size;
     }
 
@@ -109,9 +116,9 @@ contract ForkContract {
         for(uint i = IterableMapping.iterate_start(credits);
         IterableMapping.iterate_valid(credits,i);
         i = IterableMapping.iterate_next(credits,i)){
-            var (key,value) = IterableMapping.IterableMapping.iterate_get(credits,i);
-            if(value.version == version){
-                a=key.sused(value.credit);
+            (d_storage key,uint ver, uint credit) = IterableMapping.iterate_get(credits,i);
+            if(ver == version){
+                a=key.sused(credit);
             }
         }
     }
@@ -138,18 +145,14 @@ contract ForkContract {
 //       user = 0x123;
 //        credits[user] = 10;
 //}
-    function update() public returns (uint64){
-                uint64 a = 7;
-                user = 0x123;
-                d_storage d = user;
-                a = d.sused(a);
-                d_storage d2 = 0x456;
-                a = 456;
-                a = d2.sused(a);
-                a=8;
-//                d = user;
-//                a = d.sused(credits[user]);
-                return a;
-    }
+//    function update() public returns (uint64){
+//                uint64 a = 7;
+//                user = 0x123;
+//                d_storage d = user;
+//                a = d.sused(a);
+//                d_storage d2 = 0x456;
+//                a=8;
+//                return a;
+//    }
 }
 
