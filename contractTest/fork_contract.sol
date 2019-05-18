@@ -18,12 +18,17 @@ library IterableMapping {
     // value
     struct IndexValue {
         uint KeyIndex;
-        uint value;
+        user value;
+    }
+
+    struct user{
+        uint version;
+        uint credit;
     }
  
  
     // 插入数据
-    function insert(itmap storage self, d_storage key, uint value) returns(bool replaced) {
+    function insert(itmap storage self, d_storage key, user value) returns(bool replaced) {
         uint keyIdx = self.data[key].KeyIndex;
         self.data[key].value = value;
         if (keyIdx > 0) {
@@ -51,7 +56,7 @@ library IterableMapping {
     }
  
     // 获取数据
-    function iterate_get(itmap storage self, uint KeyIdx) returns(d_storage key, uint value) {
+    function iterate_get(itmap storage self, uint KeyIdx) returns(d_storage key, user value) {
         key = self.keys[KeyIdx].key;
         value = self.data[key].value;
     }
@@ -82,38 +87,57 @@ library IterableMapping {
     }
 }
 contract ForkContract {
+    using IterableMapping for *;
     IterableMapping.itmap credits;
-    d_storage cache;
-    address user;
-    function sign_up(uint version,d_storage key)
-    function insert(uint key, uint value) returns(uint size) {
-        IterableMapping.insert(data, key, value);
-        return data.size;
+    address current;
+
+    function sign_up(uint version) public returns(uint size){
+        user cache;
+        current=msg.sender;
+        d_storage d = current;
+        cache.version=version;
+        uint credit = credits.data[d].value.credit;
+        if(credit <= 0){
+            credit = 0;  
+        }
+        cache = IterableMapping.insert(credits,d,cache);
+        return credits.size;
     }
-    // 插入数据
-    function insert(uint key, uint value) returns(uint size) {
-        IterableMapping.insert(data, key, value);
-        return data.size;
-    }
- 
-    // 遍历求和
-    function sum() returns(uint s) {
-        for(var i = IterableMapping.iterate_start(data);
-            IterableMapping.iterate_valid(data, i);
-            i = IterableMapping.iterate_next(data, i)) {
-            var (key ,value) = IterableMapping.iterate_get(data, i);
-            s += value;
+
+    function record(uint version) public{
+        uint a =7;
+        for(uint i = IterableMapping.iterate_start(credits);
+        IterableMapping.iterate_valid(credits,i);
+        i = IterableMapping.iterate_next(credits,i)){
+            var (key,value) = IterableMapping.IterableMapping.iterate_get(credits,i);
+            if(value.version == version){
+                a=key.sused(value.credit);
+            }
         }
     }
 
-    mapping(address => uint) public credits;
-    function forkContract() payable {
-        user = 0x123;
-        credits[user] = 10;
-}
-    function sign() public {
+//    function vote() public returns(bool result){ 赞成大于反对 最后还要调整分数 
+//
+//    }
 
-    }
+// 插入数据
+//    function insert(uint key, uint value) returns(uint size) {
+//        IterableMapping.insert(data, key, value);
+//        return data.size;
+//    }
+    // 遍历求和
+//    function sum() returns(uint s) {
+//        for(var i = IterableMapping.iterate_start(data);
+//            IterableMapping.iterate_valid(data, i);
+//            i = IterableMapping.iterate_next(data, i)) {
+//            var (key ,value) = IterableMapping.iterate_get(data, i);
+//            s += value;
+//        }
+//    }
+//    function forkContract() payable {
+//       user = 0x123;
+//        credits[user] = 10;
+//}
     function update() public returns (uint64){
                 uint64 a = 7;
                 user = 0x123;
