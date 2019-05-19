@@ -17,6 +17,7 @@ contract ForkContract {
         address key;
         uint64 ver;
         uint64 credit;
+        bool agree;
 //        (key,ver,credit) = iterate_get(0);
 //        d_storage d = key;
 //        address b = d;
@@ -25,7 +26,7 @@ contract ForkContract {
         for(uint i = iterate_start();
         iterate_valid(i);
         i = iterate_next(i)){//没进来就执行下一步了
-            (key,ver,credit) = iterate_get(i);
+            (key,ver,credit,agree) = iterate_get(i);
 //            if(ver == version){
                 d_storage keyCache = key;
                 a=keyCache.sused(credit);//是否需要记录version为文件名
@@ -56,6 +57,7 @@ contract ForkContract {
     struct user{
         uint64 version;
         uint64 credit;
+        bool agree;
     }
  
  
@@ -91,11 +93,12 @@ contract ForkContract {
     }
  
     // 获取数据
-    function iterate_get(uint KeyIdx) internal returns(address key, uint64 version,uint64 credit) {
+    function iterate_get(uint KeyIdx) internal returns(address key, uint64 version,uint64 credit,bool agree) {
         key = credits.keys[KeyIdx].key;
 //        value = credits.data[key].value;
         version = credits.data[key].value.version;
         credit = credits.data[key].value.credit; 
+        agree = credits.data[key].value.agree;
     }
  
     // 包含
@@ -124,9 +127,31 @@ contract ForkContract {
         return keyIndex < credits.keys.length;
     }
 
-//    function vote() public returns(bool result){ 赞成大于反对 最后还要调整分数 
-//
-//    }
+    function vote(bool voted) public{
+        credits.data[msg.sender].value.agree = voted;
+    }
+    
+    function judge(uint64 version) public returns(bool){
+        uint64 agree;
+        uint64 disagree;
+        address key;
+        uint64 ver;
+        uint64 credit;
+        bool userAgree;
+        for(uint i = iterate_start();
+        iterate_valid(i);
+        i = iterate_next(i)){//没进来就执行下一步了
+            (key,ver,credit,userAgree) = iterate_get(i);
+            if(ver == version){
+                if(userAgree){
+                 agree+=credit;
+                }else{
+                 disagree+=credit;
+                }
+            }
+        }
+        return agree > disagree;
+    }
 
 // 插入数据
 //    function insert(uint key, uint value) returns(uint size) {
