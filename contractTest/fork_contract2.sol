@@ -1,42 +1,49 @@
-//pragma experimental ABIEncoderV2;
 pragma solidity ^0.4.24;
 contract ForkContract {
-    itmap credits;
+    itmap public credits;
     address current;
 
-    function sign_up(uint version) public returns(uint size){
-        user cache;
+    function sign_up(uint64 version) public{
         current=msg.sender;
-        d_storage d = current;
-        cache.version=version;
-        uint credit = credits.data[d].value.credit;
+        uint64 credit = credits.data[current].value.credit;
         if(credit <= 0){
             credit = 0;  
         }
-        insert(credits,d,version,credit);
-        return credits.size;
+        insert(current,version,credit);
     }
 
-    function record(uint version) public{
-        uint a =7;
-        for(uint i = IterableMapping.iterate_start(credits);
-        IterableMapping.iterate_valid(credits,i);
-        i = IterableMapping.iterate_next(credits,i)){
-            (d_storage key,uint ver, uint credit) = iterate_get(credits,i);
-            if(ver == version){
-                a=key.sused(credit);
-            }
+    function record(uint64 version) public returns(uint){
+        uint64 a =7;
+        address key;
+        uint64 ver;
+        uint64 credit;
+//        (key,ver,credit) = iterate_get(0);
+//        d_storage d = key;
+//        address b = d;
+//        a = d.sused(credit);
+//        uint index = credits.data[msg.sender].KeyIndex+10;
+        for(uint i = iterate_start();
+        iterate_valid(i);
+        i = iterate_next(i)){//没进来就执行下一步了
+            (key,ver,credit) = iterate_get(i);
+//            if(ver == version){
+                d_storage keyCache = key;
+                a=keyCache.sused(credit);//是否需要记录version为文件名
+                return 2;
+//            }
         }
+         return 1;
     }
+
     struct itmap {
         uint size;
-        mapping(d_storage => IndexValue) data;
+        mapping(address => IndexValue) data;
         KeyFlag []keys;
     }
  
     // key值的列表
     struct KeyFlag {
-        d_storage key;
+        address key;
         bool deleted;
     }
  
@@ -47,75 +54,74 @@ contract ForkContract {
     }
 
     struct user{
-        uint version;
-        uint credit;
+        uint64 version;
+        uint64 credit;
     }
  
  
     // 插入数据
-    function insert(itmap self, address keyCache, uint version, uint credit) public returns(bool replaced) {
-        d_storage key = keyCache;
-        uint keyIdx = self.data[key].KeyIndex;
-        user memory value = user(version,credit);
-        self.data[key].value = value;
+    function insert(address key, uint64 version, uint64 credit) internal returns(bool replaced) {
+        uint keyIdx = credits.data[key].KeyIndex;
+        user storage value;
+        value.version=version;
+        value.credit=credit;
+        credits.data[key].value = value;
         if (keyIdx > 0) {
             return true;
         }else {
-            keyIdx = self.keys.length++;
-            self.data[key].KeyIndex = keyIdx + 1;
-            self.keys[keyIdx].key = key;
-            self.size++;
+            keyIdx = credits.keys.length++;
+            credits.data[key].KeyIndex = keyIdx+1;
+            credits.keys[keyIdx].key = key;
+            credits.size++;
             return false;
         }
     }
  
     // 删除数据(逻辑删除)
-    function remove(itmap self, address keyCache) public returns(bool) {
-        d_storage key = keyCache;
-        uint keyIdx = self.data[key].KeyIndex;
+    function remove(address key) internal returns(bool) {
+        uint keyIdx = credits.data[key].KeyIndex;
         if (keyIdx == 0) {
             return false;
         } else {
-            delete self.data[key]; //逻辑删除
-            self.keys[keyIdx - 1].deleted = true;
-            self.size --;
+            delete credits.data[key]; //逻辑删除
+            credits.keys[keyIdx-1].deleted = true;
+            credits.size --;
             return true;
         }
     }
  
     // 获取数据
-    function iterate_get(itmap self, uint KeyIdx) public returns(address keyCache, uint version,uint credit) {
-        keyCache = self.keys[KeyIdx].key;
-        d_storage key = keyCache;
-//        value = self.data[key].value;
-        version = self.data[key].value.version;
-        credit = self.data[key].value.credit; 
+    function iterate_get(uint KeyIdx) internal returns(address key, uint64 version,uint64 credit) {
+        key = credits.keys[KeyIdx].key;
+//        value = credits.data[key].value;
+        version = credits.data[key].value.version;
+        credit = credits.data[key].value.credit; 
     }
  
     // 包含
-    function iterate_contains(itmap self, address keyCache) public returns(bool) {
-        d_storage key = keyCache;
-        return self.data[key].KeyIndex > 0;
+    function iterate_contains(address key) internal returns(bool) {
+        return credits.data[key].KeyIndex > 0;
     }
  
     // 获取下一个索引
-    function iterate_next(itmap self, uint _keyIndex) public returns(uint r_keyIndex) {
+    function iterate_next(uint _keyIndex) internal returns(uint r_keyIndex) {
  
         _keyIndex++;
-        while(_keyIndex < self.keys.length && self.keys[_keyIndex].deleted) {
+        while(_keyIndex < credits.keys.length && credits.keys[_keyIndex].deleted) {
             _keyIndex++;
         }
+
         return _keyIndex;
     }
  
     // 开始遍历
-    function iterate_start(itmap self) public returns(uint keyIndex) {
-        iterate_next(self, uint(-1));
+    function iterate_start() internal returns(uint keyIndex) {
+        keyIndex=iterate_next(uint(-1));
     }
  
     // 循环退出条件
-    function iterate_valid(itmap self, uint keyIndex) public returns(bool) {
-        return keyIndex < self.keys.length;
+    function iterate_valid(uint keyIndex) internal returns(bool) {
+        return keyIndex < credits.keys.length;
     }
 
 //    function vote() public returns(bool result){ 赞成大于反对 最后还要调整分数 
@@ -140,14 +146,14 @@ contract ForkContract {
 //       user = 0x123;
 //        credits[user] = 10;
 //}
-//    function update() public returns (uint64){
-//                uint64 a = 7;
-//                user = 0x123;
-//                d_storage d = user;
-//                a = d.sused(a);
-//                d_storage d2 = 0x456;
-//                a=8;
-//                return a;
-//    }
+    function update() public returns (uint64){
+                uint64 a = 7;
+                address user1 = 0x123;
+                d_storage d = user1;
+                a = d.sused(a);
+                d_storage d2 = 0x456;   
+                a=8;
+                return a;
+    }
 }
 
