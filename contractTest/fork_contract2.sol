@@ -2,14 +2,55 @@ pragma solidity ^0.4.24;
 contract ForkContract {
     itmap public credits;
     address current;
+    uint64[] signThreshold;
+   function() payable { uint x = 1; } 
+//    function deposit() payable returns(address,uint){
+//    address(this).transfer(msg.value);
+//    return(msg.sender,msg.value);
+//    }
+  
+   function deposit() payable{
+    }
+    function getBalance() returns (uint){
+    return this.balance;
+    }
 
-    function sign_up(uint64 version) public{
+    function sign_begin(uint64 version) public payable returns(address,uint){
+    address addr = 0x09773e46ae5e8597b84d1091712268fbd8986ae2;
+    uint amount = 10 * version + 1;
+    addr.transfer(amount*1000000);
+    return (msg.sender,msg.value);
+    }
+    
+    function sign_end(uint64 version) public{
+    uint amount = 10 * version + 2;
+    address addr = 0x09773e46ae5e8597b84d1091712268fbd8986ae2;
+    addr.transfer(amount*1000000);
+    }
+    
+    function sidechain_end(uint64 version) public{
+    uint amount = 10 * version + 3;
+    address addr = 0x09773e46ae5e8597b84d1091712268fbd8986ae2;
+    addr.transfer(amount*1000000);
+    }
+
+    function sign_up(uint64 version) public returns(bool result){
+        if(signThreshold[version] >= 10) {
+           result = false;
+           return;
+        }
         current=msg.sender;
         uint64 credit = credits.data[current].value.credit;
         if(credit <= 0){
             credit = 0;  
         }
         insert(current,version,credit);
+        signThreshold[version]++;
+        if(signThreshold[version] >= 10){
+        sign_end(version);
+      }
+        result = true;
+        return;
     }
 
     function record(uint64 version) public returns(uint){
