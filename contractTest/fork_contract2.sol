@@ -105,10 +105,12 @@ contract ForkContract {
     // 插入数据
     function insert(address key, uint64 version, uint64 credit) internal returns(bool replaced) {
         uint keyIdx = credits.data[key].KeyIndex;
-        user storage value;
-        value.version=version;
-        value.credit=credit;
-        credits.data[key].value = value;
+//        user storage value;
+//        value.version=version;
+//        value.credit=credit;
+//        credits.data[key].value = value;
+        credits.data[key].value.credit = credit;
+        credits.data[key].value.version = version;
         if (keyIdx > 0) {
             return true;
         }else {
