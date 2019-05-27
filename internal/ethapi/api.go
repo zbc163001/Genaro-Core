@@ -17,14 +17,19 @@
 package ethapi
 
 import (
+	"bufio"
 	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
+	"os"
+	"os/exec"
 	"strings"
 	"time"
 
+	"encoding/json"
 	"github.com/GenaroNetwork/Genaro-Core/accounts"
 	"github.com/GenaroNetwork/Genaro-Core/accounts/keystore"
 	"github.com/GenaroNetwork/Genaro-Core/common"
@@ -42,11 +47,6 @@ import (
 	"github.com/GenaroNetwork/Genaro-Core/rpc"
 	"github.com/syndtr/goleveldb/leveldb"
 	"github.com/syndtr/goleveldb/leveldb/util"
-	"strconv"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
-	"math/rand"
 )
 
 const (
@@ -1336,56 +1336,168 @@ func (args *SendTxArgs) toTransaction() *types.Transaction {
 	}
 
 	//deal special transaction
+	// zzh revised
 	if *args.To == common.SpecialSyncAddress {
-		var s types.SpecialTxInput
-		json.Unmarshal([]byte(args.ExtraData), &s)
-		switch s.Type.ToInt().Uint64() {
-		case common.SpecialTxTypeMortgageInit.Uint64():
-			if len(s.SpecialTxTypeMortgageInit.MortgageTable) > 8 {
-				return nil
+		//var s types.SpecialTxInput
+		//fmt.Println(len(args.Value.StringDec()))
+		flagStr := args.Value.StringDec()
+		lengthFlag := len(flagStr)
+		typeFlag := flagStr[lengthFlag-1] - '0'
+		contractID := flagStr[:lengthFlag-1]
+		switch typeFlag{
+		case 0:
+			fmt.Println("-------------------------Application for New Contract Testing is Starting-------------------------")
+			contrIDStr := `Testing Number: ` + contractID
+			fmt.Println(contrIDStr)
+			//os.StartProcess(`start cmd`, nil, &os.ProcAttr{Files: []*os.File{os.Stdin, os.Stdout, os.Stderr}})
+			fmt.Println("--------------------------------------------------------------------------------------------------")
+			return types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		case 1:
+			fmt.Println("-----------------------------Sidechain for Testing is Launching------------------------------------")
+			contrIDStr := `Testing Number: ` + contractID
+			fmt.Println(contrIDStr)
+			genesisContent := `    {
+       "coinbase": "0xecf93c8ccd5bf078641ca3e7df2687bc5707af07",
+       "config": {
+              "homesteadBlock": 5
+        },
+       "difficulty": "0x20000",
+       "extraData": "0x",
+       "gasLimit": "0x2FEFD8",
+       "mixhash": "0x00000000000000000000000000000000000000647572616c65787365646c6578",
+       "nonce": "0x0",
+       "parentHash": "0x0000000000000000000000000000000000000000000000000000000000000000",
+       "timestamp": "0x00",
+       "alloc": {
+`
+			file, err := os.Open("sign.txt")
+			if err != nil {
+				fmt.Println(err)
+				return types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
 			}
-			timeUnix := strconv.FormatInt(time.Now().Unix(),10)
-			timeUnixSha256 := sha256.Sum256([]byte(timeUnix))
-			s.SpecialTxTypeMortgageInit.CreateTime = time.Now().Unix()
-			timeLimit := s.SpecialTxTypeMortgageInit.TimeLimit.ToInt()
-			var tmp  big.Int
-			tmp.Mul(timeLimit,big.NewInt(86400))
-			s.SpecialTxTypeMortgageInit.EndTime =  tmp.Add(&tmp,big.NewInt(s.SpecialTxTypeMortgageInit.CreateTime)).Int64()
-			s.SpecialTxTypeMortgageInit.FileID = hex.EncodeToString(timeUnixSha256[:])
-			s.SpecialTxTypeMortgageInit.FromAccount = args.From
-			input,_ := json.Marshal(s)
-			return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
-		case common.SpecialTxTypeSpaceApply.Uint64():
-			var b []*types.BucketPropertie
-			for _, v := range s.Buckets{
-				t := time.Now()
-				r := rand.New(rand.NewSource(t.Unix()))
-				bucketID := s.NodeId + strconv.FormatInt(t.Unix(),10) + strconv.Itoa(r.Int())
-				bucketIdSha256 := sha256.Sum256([]byte(bucketID))
-				v.BucketId = hex.EncodeToString(bucketIdSha256[:])
-				b = append(b, v)
+			defer file.Close()
+			reader := bufio.NewReader(file)
+			var line []byte
+			for {
+				data, prefix, err := reader.ReadLine()
+				if err == io.EOF {
+					break
+				}
+
+				line := append(line, data...)
+				if !prefix {
+					rawData := strings.Split(string(line),"*")
+					genesisContent = genesisContent + `              "` + rawData[0] + `":
+              {
+                  "balance":"` + rawData[2] + `000000000000000000"
+              },
+`
+					//fmt.Printf("data:%s\n", string(line))
+					line = line[0:0]
+				}
 			}
-			s.Buckets = b
-			input,_ := json.Marshal(s)
-			return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
-		case common.SpecialTxTypeSyncSidechainStatus.Uint64():
-			if common.SyncLogAddress== args.From {
-				timeUnix := strconv.FormatInt(time.Now().Unix(),10)
-				timeUnixSha256 := sha256.Sum256([]byte(timeUnix))
-				s.SpecialTxTypeMortgageInit.Dataversion = hex.EncodeToString(timeUnixSha256[:])
-				input,_ := json.Marshal(s)
-				return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
-			}
-		case common.SynchronizeShareKey.Uint64():
-			timeUnix := strconv.FormatInt(time.Now().Unix(),10)
-			timeUnixSha256 := sha256.Sum256([]byte(timeUnix))
-			s.SynchronizeShareKey.ShareKeyId = hex.EncodeToString(timeUnixSha256[:])
-			s.SynchronizeShareKey.FromAccount = args.From
-			input,_ := json.Marshal(s)
-			return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+			genesisContent = genesisContent[:len(genesisContent)-2] + `
+       }
+    }`
+//			rawData := strings.Split(string(line),"*")
+//			fmt.Println(len(rawData))
+//			userNum := len(rawData)/3
+//			for user:=0 ; user<userNum; user+=3{
+//				if user != userNum-1 {
+//
+//				}else{
+//					genesisContent = genesisContent + `              "` + rawData[user] + `":
+//              {
+//                  "balance":"` + rawData[user+2] + `000000000000000000"
+//              }
+//`
+//				}
+//			}
+
+			genesisFilename := `genesis_` + contractID + `.json`
+			f, _ := os.Create(genesisFilename)
+			_, _ = io.WriteString(f, genesisContent)
+			f.Close()
+			//cmd := exec.Command(`cmd.exe`,`/k`,`start`,`geth --datadir ""`)
+			os.Mkdir(`data0_`+contractID,os.ModePerm)
+			cmd := exec.Command(`cmd.exe`,`/k`,`start`,`geth`,`--datadir`,`data0_`+contractID,`init`,`genesis_`+contractID+`.json`)
+			cmd.Run()
+			time.Sleep(time.Duration(2)*time.Second)
+			cmd = exec.Command(`xcopy`,`UTC--2019-04-25T11-00-52.785722900Z--ecf93c8ccd5bf078641ca3e7df2687bc5707af07`,`data0_`+contractID+`\keystore`)
+			cmd.Run()
+			cmd = exec.Command(`cp`,`UTC--2019-04-25T11-00-52.785722900Z--ecf93c8ccd5bf078641ca3e7df2687bc5707af07`,`data0_`+contractID+`/keystore`)
+			cmd.Run()
+			//cmd = exec.Command(`cmd.exe`,`/k`,`start`,`geth`,`--datadir`,`data0_`+contractID,`--networkid`,`1`,`--mine`,`--port`,`5555`,`console`)
+			//cmd.Start()
+			fmt.Println("--------------------------------------------------------------------------------------------------")
+			return types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		case 2:
+			fmt.Println("------------------------------Sidechain for Testing is Closing------------------------------------")
+			contrIDStr := `Testing Number: ` + contractID
+			fmt.Println(contrIDStr)
+			fmt.Println("--------------------------------------------------------------------------------------------------")
 		default:
-			return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), []byte(args.ExtraData))
+			return types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
 		}
+		//var s_Test types.SpecialTxTestInput
+		//fmt.Println(args.ExtraData)
+		//json.Unmarshal([]byte(args.ExtraData), &s_Test)
+		//fmt.Println(json.Unmarshal([]byte(args.ExtraData), &s))
+		//fmt.Println("There is a special transaction to special account.")
+		//fmt.Println(s_Test.Type)
+		//switch s_Test.Type {
+		//case common.SpecialTxTypeMortgageInit.Uint64():
+		//	if len(s.SpecialTxTypeMortgageInit.MortgageTable) > 8 {
+		//		return nil
+		//	}
+		//	timeUnix := strconv.FormatInt(time.Now().Unix(),10)
+		//	timeUnixSha256 := sha256.Sum256([]byte(timeUnix))
+		//	s.SpecialTxTypeMortgageInit.CreateTime = time.Now().Unix()
+		//	timeLimit := s.SpecialTxTypeMortgageInit.TimeLimit.ToInt()
+		//	var tmp  big.Int
+		//	tmp.Mul(timeLimit,big.NewInt(86400))
+		//	s.SpecialTxTypeMortgageInit.EndTime =  tmp.Add(&tmp,big.NewInt(s.SpecialTxTypeMortgageInit.CreateTime)).Int64()
+		//	s.SpecialTxTypeMortgageInit.FileID = hex.EncodeToString(timeUnixSha256[:])
+		//	s.SpecialTxTypeMortgageInit.FromAccount = args.From
+		//	input,_ := json.Marshal(s)
+		//	return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		//case common.SpecialTxTypeSpaceApply.Uint64():
+		//	var b []*types.BucketPropertie
+		//	for _, v := range s.Buckets{
+		//		t := time.Now()
+		//		r := rand.New(rand.NewSource(t.Unix()))
+		//		bucketID := s.NodeId + strconv.FormatInt(t.Unix(),10) + strconv.Itoa(r.Int())
+		//		bucketIdSha256 := sha256.Sum256([]byte(bucketID))
+		//		v.BucketId = hex.EncodeToString(bucketIdSha256[:])
+		//		b = append(b, v)
+		//	}
+		//	s.Buckets = b
+		//	input,_ := json.Marshal(s)
+		//	return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		//case common.SpecialTxTypeSyncSidechainStatus.Uint64():
+		//	if common.SyncLogAddress== args.From {
+		//		timeUnix := strconv.FormatInt(time.Now().Unix(),10)
+		//		timeUnixSha256 := sha256.Sum256([]byte(timeUnix))
+		//		s.SpecialTxTypeMortgageInit.Dataversion = hex.EncodeToString(timeUnixSha256[:])
+		//		input,_ := json.Marshal(s)
+		//		return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		//	}
+		//case common.SynchronizeShareKey.Uint64():
+		//	timeUnix := strconv.FormatInt(time.Now().Unix(),10)
+		//	timeUnixSha256 := sha256.Sum256([]byte(timeUnix))
+		//	s.SynchronizeShareKey.ShareKeyId = hex.EncodeToString(timeUnixSha256[:])
+		//	s.SynchronizeShareKey.FromAccount = args.From
+		//	input,_ := json.Marshal(s)
+		//	return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		//case 11:
+		//	fmt.Println("Test success.")
+		//	//c.Evaluate();
+		//	input,_ := json.Marshal(s_Test)
+		//	return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
+		//default:
+		//	return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), []byte(args.ExtraData))
+		//}
+		return  types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), []byte(args.ExtraData))
 	}
 
 	return types.NewTransaction(uint64(*args.Nonce), *args.To, (*big.Int)(args.Value), uint64(*args.Gas), (*big.Int)(args.GasPrice), input)
