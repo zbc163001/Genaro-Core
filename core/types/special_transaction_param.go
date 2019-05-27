@@ -15,6 +15,12 @@ type SpecialTxInput struct {
 	Message string      `json:"msg"`
 }
 
+type SpecialTxTestInput struct {
+	ContractVersion int `json:"contractVersion"`
+	Type int `json:"type"`
+}
+
+
 func (s SpecialTxInput) SpecialCost() *big.Int {
 	rt := new(big.Int)
 	switch s.Type.ToInt() {

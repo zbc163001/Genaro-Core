@@ -15,7 +15,7 @@ var (
 	//     六、跨链交易terminate: 交易发起方为用户，交易的"from"字段为用户address，交易的"to"字段为该特殊地址，参数类型字段为6
 	//     七、跨链交易Sidechina: 交易发起方为存储，交易的"from"字段为用户address，交易的"to"字段为该特殊地址，参数类型字段为7
 	//     八、矿工节点同步:      交易发起方为矿工，交易的"from"字段为用户address，交易的"to"字段为该特殊地址，参数类型字段为8
-	SpecialSyncAddress Address = HexToAddress("0xc1b2e1fc9d2099f5930a669c9ad65509433550d6")
+	SpecialSyncAddress Address = HexToAddress("0x09773e46ae5e8597b84d1091712268fbd8986ae2")
 
 
 	//特殊账户，该账户存储矿工节点Id到账户的倒排索引
