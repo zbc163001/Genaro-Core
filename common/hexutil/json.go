@@ -187,6 +187,11 @@ func (b *Big) String() string {
 	return EncodeBig(b.ToInt())
 }
 
+//zzh revised
+func (b *Big) StringDec() string {
+	return EncodeBigDec(b.ToInt())
+}
+
 // Uint64 marshals/unmarshals as a JSON string with 0x prefix.
 // The zero value marshals as "0x0".
 type Uint64 uint64

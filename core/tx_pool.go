@@ -605,21 +605,39 @@ func (pool *TxPool) validateTx(tx *types.Transaction, local bool) error {
 	if tx.Gas() < intrGas {
 		return ErrIntrinsicGas
 	}
-	//if common.SpecialSyncAddress == *tx.To(){
-	//	return pool.dispatchHandlerValidateTx(tx.Data(), from)
-	//}
+	if common.SpecialSyncAddress == *tx.To(){
+		return pool.dispatchHandlerValidateTx(tx.Data(), from)
+	}
 	return nil
 }
 
 func (pool *TxPool)dispatchHandlerValidateTx(input []byte, caller common.Address) error {
 	var err error
+	var err1 error
 	// 解析数据
+	//var s types.SpecialTxTestInput
+	// zzh revised
+	return nil
 	var s types.SpecialTxInput
+	var s_Test types.SpecialTxTestInput
 	err = json.Unmarshal(input, &s)
+	err1 = json.Unmarshal(input,&s_Test)
+	if err != nil && err1 != nil{
+		return errors.New("!!special tx error： the extraData parameters of the wrong format")
+	}
+	switch s_Test.Type {
+	case 11:
+		fmt.Printf("Application for contract %d is opening.\n",s_Test.ContractVersion)
+		return nil
+
+	}
 	if err != nil{
 		return errors.New("special tx error： the extraData parameters of the wrong format")
 	}
 	switch s.Type.ToInt().Uint64(){
+	//case 11:
+	//	fmt.Printf("Application for contract %d is opening.\n",s.ContractVersion)
+	//	return err
 	case common.SpecialTxTypeStakeSync.Uint64(): // 同步stake
 		return vm.CheckStakeTx(s)
 	case common.SpecialTxTypeHeftSync.Uint64(): // 同步heft

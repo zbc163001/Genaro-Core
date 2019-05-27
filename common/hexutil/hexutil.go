@@ -184,6 +184,15 @@ func EncodeBig(bigint *big.Int) string {
 	return fmt.Sprintf("%#x", bigint)
 }
 
+//zzh revised
+func EncodeBigDec(bigint *big.Int) string {
+	nbits := bigint.BitLen()
+	if nbits == 0 {
+		return "0x0"
+	}
+	return fmt.Sprintf("%#d", bigint)
+}
+
 func has0xPrefix(input string) bool {
 	return len(input) >= 2 && input[0] == '0' && (input[1] == 'x' || input[1] == 'X')
 }
