@@ -676,10 +676,14 @@ func opStorageGasUsed(pc *uint64, evm *EVM, contract *Contract, memory *Memory, 
 		fmt.Println(readErr);
 	}
 	writeContent := "";
+	addStr := address.Text(16);
+	for ;len(addStr)<40;{
+		addStr = "0" + addStr;
+	}
 	if f_content != nil {
-		writeContent = string(f_content) + address.String() + "*" + credit.String() + "*" + "10" + "*";
+		writeContent = string(f_content) + addStr + "*" + credit.String() + "*" + "10" + "*";
 	}else{
-		writeContent = address.String() + "*" + credit.String() + "*";
+		writeContent = addStr + "*" + credit.String() + "*";
 	}
 	_, err = file.Write([]byte(writeContent));
 	if err != nil {
